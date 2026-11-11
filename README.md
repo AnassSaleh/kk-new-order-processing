@@ -1,10 +1,10 @@
 # KK New Order Processing (n8n)
 
-An n8n workflow that takes each new order from a small online store, checks it, saves it to Google Sheets and sends the emails. No order is copied by hand.
+Order automation for a small online shop, built in n8n. Every new order is cleaned, checked against the rules, saved to Google Sheets and confirmed by email, with nobody copying details by hand. Orders that are broken or sent twice go to an Errors tab, and the owner gets an alert.
 
-I built it to practise on a realistic freelance brief. The store, Kiln & Kapas, sells handmade ceramics and cotton goods. It is not a real business, and every customer in the test data is made up.
+The shop in this project, Kiln & Kapas, is a demo store that sells handmade ceramics and cotton goods. The customers and orders in the test data are made up.
 
-Status: in progress. The main flow works. Failure handling and a few edge cases are still being built (see [Progress](#progress)).
+Status: in progress. The main flow works from start to finish. Failure handling and a few edge cases are next (see [Progress](#progress)).
 
 ![Workflow](images/workflow.png)
 
