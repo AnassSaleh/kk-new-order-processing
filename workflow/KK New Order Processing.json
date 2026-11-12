@@ -1,0 +1,1419 @@
+{
+  "name": "KK New Order Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "kk-new-order",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        -496
+      ],
+      "id": "54dbba9c-aa06-4bf3-a01a-25430c48daf1",
+      "name": "New Order Received",
+      "webhookId": "27d5a8f6-52cb-4345-b1dd-c66d4f1f0324"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "80c49971-c120-484b-8cdf-ce721615630d",
+              "name": "Order ID",
+              "value": "={{ String($('New Order Received').item.json.body.order_id ?? '').replace(/\\s/g, '').toUpperCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "813e58b1-283c-4a3e-9807-607fb6884347",
+              "name": "Date",
+              "value": "={{ (() => {\n  const d = String($('New Order Received').item.json.body.order_date ?? '').trim();\n  const zone = 'Asia/Kuala_Lumpur';\n  let dt;\n  if (/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}/.test(d)) {\n    dt = DateTime.fromFormat(d.split(' ')[0], 'd/M/yyyy', { zone });\n  } else {\n    dt = DateTime.fromISO(d, { zone });\n    if (!dt.isValid) dt = DateTime.fromFormat(d, 'd LLL yyyy h:mm a', { zone, locale: 'en' });\n  }\n  return dt.isValid ? dt.toFormat('yyyy-MM-dd') : '';\n})() }}",
+              "type": "string"
+            },
+            {
+              "id": "c29a1c1b-0d7f-44b6-9625-b70e6ab13767",
+              "name": "Customer Name",
+              "value": "={{ (typeof $('New Order Received').item.json.body.customer_name === 'string' ? $('New Order Received').item.json.body.customer_name : '').trim().replace(/\\s+/g, ' ') }}",
+              "type": "string"
+            },
+            {
+              "id": "f35a9b96-1502-48e9-ad0e-24175039dfa3",
+              "name": "Email",
+              "value": "={{ String($('New Order Received').item.json.body.email ?? '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "52fbd19e-6bf3-4b32-9722-2efe45845633",
+              "name": "Product",
+              "value": "={{ (typeof $('New Order Received').item.json.body.product_name === 'string' ? $('New Order Received').item.json.body.product_name : '').trim().replace(/\\s+/g, ' ') }}",
+              "type": "string"
+            },
+            {
+              "id": "7a4c3393-0bb4-40ad-8f00-3e2c8d3fe6ed",
+              "name": "Quantity",
+              "value": "={{ $('New Order Received').item.json.body.quantity }}",
+              "type": "string"
+            },
+            {
+              "id": "cf3e9bcd-9e99-4fff-81ae-fc1344942454",
+              "name": "Total",
+              "value": "={{ Math.round(Number(String($('New Order Received').item.json.body.quantity ?? '').trim()) * Number(String($('New Order Received').item.json.body.price ?? '').replace(/RM/i, '').replace(/,/g, '').trim()) * 100) / 100 }}",
+              "type": "number"
+            },
+            {
+              "id": "4b924ce7-cb2b-4278-81aa-cf7aa232943d",
+              "name": "Shipping Address",
+              "value": "={{ String($('New Order Received').item.json.body.shipping_address ?? '').split(/\\r?\\n/).map(l => l.trim().replace(/,$/, '')).filter(l => l !== '').join(', ') }}",
+              "type": "string"
+            },
+            {
+              "id": "fef9551b-e2d7-4e08-a060-b63bd543d515",
+              "name": "Status",
+              "value": "New",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -80,
+        -496
+      ],
+      "id": "8f8ac396-5dde-4f27-92e9-fe634b94eac3",
+      "name": "Clean Order Data",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "732b40f8-c9aa-4d5d-8fae-b12e206697b3",
+              "leftValue": "={{ $json['Order ID'] }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c8432f07-cbb3-419a-b397-ffecf8f0ecd9",
+              "leftValue": "={{ $json['Customer Name'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "61077841-4d97-4ebf-a8e0-49024f691d7a",
+              "leftValue": "={{ $json.Product }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "63a678b6-beef-4d17-9213-771980031338",
+              "leftValue": "={{ String($json.Quantity ?? '').trim() }}",
+              "rightValue": "^[1-9]\\d*$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            },
+            {
+              "id": "7d40d0bf-faf1-4bb6-abbc-952e4b1d6806",
+              "leftValue": "={{ $json.Total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "fa8dae99-c5f9-4dc9-9f15-0884b7638a2c",
+              "leftValue": "={{ String($json['Shipping Address'] ?? '').trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "c6a30965-97db-4ec6-8d68-21208e5ce8a5",
+              "leftValue": "={{ $json.Email }}",
+              "rightValue": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        176,
+        -496
+      ],
+      "id": "e6e2e325-e062-4779-bb4b-d0b6382400c7",
+      "name": "Is Order Valid?"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1549923300,
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=1549923300"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Order ID",
+              "lookupValue": "={{ $('Clean Order Data').item.json['Order ID'] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        512,
+        -528
+      ],
+      "id": "04f5b792-a1f3-4572-ab73-375e15cf58a9",
+      "name": "Find Order ID in Sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2c5caa57-5e3e-4139-b59a-3bae76b8d641",
+              "leftValue": "={{ $json.row_number }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "number",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        -448
+      ],
+      "id": "88c2cb52-0624-424a-bd7c-770e466818a8",
+      "name": "Already Saved?",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1549923300,
+          "mode": "list",
+          "cachedResultName": "Orders",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=1549923300"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Order ID": "={{ $('Clean Order Data').item.json['Order ID'] }}",
+            "Date": "={{ $('Clean Order Data').item.json.Date }}",
+            "Customer Name": "={{ $('Clean Order Data').item.json['Customer Name'] }}",
+            "Email": "={{ $('Clean Order Data').item.json.Email }}",
+            "Product": "={{ $('Clean Order Data').item.json.Product }}",
+            "Quantity": "={{ $('Clean Order Data').item.json.Quantity }}",
+            "Total": "={{ $('Clean Order Data').item.json.Total }}",
+            "Shipping Address": "={{ $('Clean Order Data').item.json['Shipping Address'] }}",
+            "Status": "=New"
+          },
+          "matchingColumns": [
+            "Order ID"
+          ],
+          "schema": [
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Customer Name",
+              "displayName": "Customer Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Product",
+              "displayName": "Product",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Total",
+              "displayName": "Total",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Shipping Address",
+              "displayName": "Shipping Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        -448
+      ],
+      "id": "b3fcc6da-32af-46c0-b346-ec6e63e98f25",
+      "name": "Save to Orders",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "orders@kilnandkapas.example",
+        "toEmail": "hana@kilnandkapas.example",
+        "subject": "=New order {{ $('Clean Order Data').item.json[\"Order ID\"] }} - RM {{ Number($('Clean Order Data').item.json[\"Total\"]).toFixed(2) }}",
+        "html": "=<h2>New order {{ $('Clean Order Data').item.json[\"Order ID\"] }}</h2>\n<p>\n<b>Customer:</b> {{ $('Clean Order Data').item.json[\"Customer Name\"] }}<br>\n<b>Email:</b> {{ $('Clean Order Data').item.json[\"Email\"] }}<br>\n<b>Product:</b> {{ $('Clean Order Data').item.json[\"Product\"] }}<br>\n<b>Quantity:</b> {{ $('Clean Order Data').item.json[\"Quantity\"] }}<br>\n<b>Total:</b> RM {{ Number($('Clean Order Data').item.json[\"Total\"]).toFixed(2) }}<br>\n<b>Ship to:</b> {{ $('Clean Order Data').item.json[\"Shipping Address\"] }}\n</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1360,
+        -400
+      ],
+      "id": "75bffd34-2c0d-4a23-b7ff-e8a650412d9d",
+      "name": "Email Hana - New Order",
+      "webhookId": "b86bc0d7-f069-4596-be4d-d25714657d52",
+      "credentials": {
+        "smtp": {
+          "id": "q3gSRvJLqBVcU2Hq",
+          "name": "KK Mail (practice)"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"received\",\"order_id\":\"{{ $('Edit Fields').item.json['Order ID'] }}\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2080,
+        -496
+      ],
+      "id": "db99ef11-d76c-42f4-82ee-cfed616b137d",
+      "name": "Reply 200 - Received"
+    },
+    {
+      "parameters": {
+        "fromEmail": "orders@kilnandkapas.example",
+        "toEmail": "hana@kilnandkapas.example",
+        "subject": "=   [ALERT] Order problem: {{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() || 'NO-ID' }}",
+        "html": "=<h2>Order problem</h2>\n<p><b>Order ID:</b> {{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() || 'NO-ID' }}</p>\n<p><b>What went wrong:</b> Order failed the validation check. It was not saved to Orders.</p>\n<p><b>Time:</b> {{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}</p>\n<p><b>Original order:</b></p>\n<pre>{{ JSON.stringify($('New Order Received').item.json.body, null, 2) }}</pre>\n<p>This order is also in the Errors tab of KK-Orders-2026.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1248,
+        -80
+      ],
+      "id": "ce676983-879f-4558-b43c-94dab6a18aa8",
+      "name": "Alert Hana - Bad Order",
+      "webhookId": "50ddf444-9d52-46c9-bcdf-9a57684c443e",
+      "credentials": {
+        "smtp": {
+          "id": "q3gSRvJLqBVcU2Hq",
+          "name": "KK Mail (practice)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"rejected\",\"reason\":\"Order failed the validation check\"}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1600,
+        -80
+      ],
+      "id": "f8939a9c-99f8-4227-888a-edec26b07672",
+      "name": "Reply 422 - Rejected"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 656516031,
+          "mode": "list",
+          "cachedResultName": "Errors",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=656516031"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "Order ID": "={{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() }}",
+            "Raw Data": "={{ JSON.stringify($('New Order Received').item.json.body) }}",
+            "Error Type": "Duplicate",
+            "Details": "Order ID already in the Orders tab"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Type",
+              "displayName": "Error Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Details",
+              "displayName": "Details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Data",
+              "displayName": "Raw Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1024,
+        -832
+      ],
+      "id": "8d7f8075-6377-462d-adf4-c9fe216fdaa2",
+      "name": "Log Error - Duplicate",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "orders@kilnandkapas.example",
+        "toEmail": "hana@kilnandkapas.example",
+        "subject": "=[ALERT] Duplicate order: {{ $('Clean Order Data').item.json['Order ID'] }}",
+        "html": "=<h2>Duplicate order</h2>\n<p><b>Order ID:</b> {{ $('Clean Order Data').item.json['Order ID'] }}</p>\n<p><b>What happened:</b> This order ID is already in the Orders tab, so it was not saved again.</p>\n<p><b>Time:</b> {{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}</p>\n<p><b>Original order:</b></p>\n<pre>{{ JSON.stringify($('New Order Received').item.json.body, null, 2) }}</pre>\n<p>This duplicate is also in the Errors tab of KK-Orders-2026.</p>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1232,
+        -832
+      ],
+      "id": "4213426c-ecf3-4edc-8893-dffe3d4f309d",
+      "name": "Alert Hana - Duplicate",
+      "webhookId": "4f010d72-d1ae-4163-aa5d-4f93ef181f97",
+      "credentials": {
+        "smtp": {
+          "id": "q3gSRvJLqBVcU2Hq",
+          "name": "KK Mail (practice)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"duplicate\",\"order_id\":\"{{ $('Edit Fields').item.json['Order ID'] }}\"}",
+        "options": {
+          "responseCode": 409
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1584,
+        -832
+      ],
+      "id": "bfb903dd-cf29-4c16-8406-a0293fda207d",
+      "name": "Reply 409 - Duplicate"
+    },
+    {
+      "parameters": {
+        "content": "## KK - New Order Processing\nReceives each order from the Kiln & Kapas store, checks it,\nsaves it to Google Sheets (KK-Orders-2026) and sends emails.\n\nGood order  → Orders tab + email to Hana + email to customer\nBad order   → Errors tab + alert to Hana\nDuplicate   → Errors tab + alert to Hana (not saved again)",
+        "height": 208,
+        "width": 512,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -848
+      ],
+      "id": "324ebf64-b410-44b9-b031-9e58c674967b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## 1. Receive and clean\nThe store sends the order here (POST /kk-new-order).\nClean Order Data fixes spaces, capitals, the date\n(always YYYY-MM-DD, Malaysia time), the total and the address.\nTo change a rule, edit the field in Clean Order Data.",
+        "height": 192,
+        "width": 496,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -304
+      ],
+      "id": "a69c7461-8cb9-4b61-a278-9fc9ec150fc0",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## 2. Check the order\nEvery field must be filled in, the email must be valid,\nquantity must be a whole number (1 or more), total above 0.\nIf not → logged in Errors as \"Validation\", Hana is alerted,\nthe store gets 422.",
+        "height": 224,
+        "width": 352,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -864
+      ],
+      "id": "7595b687-cb3f-4d2a-9057-71635c00d772",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 3. Stop duplicates\nLooks for the Order ID in the Orders tab.\nFound → logged in Errors as \"Duplicate\", Hana is alerted,\nthe store gets 409. The order is NOT saved twice.",
+        "height": 208,
+        "width": 352,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        592,
+        -848
+      ],
+      "id": "96230569-76d1-4628-b427-95a853729e84",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## 4. Save and notify\nAdds one row to Orders (Status: New),\nemails Hana a summary, emails the customer a confirmation,\nand the store gets 200.",
+        "height": 176,
+        "width": 416,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2288,
+        -528
+      ],
+      "id": "4908ef14-c8ef-4dc1-8467-c6ba29c285f4",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "fromEmail": "=orders@kilnandkapas.example",
+        "toEmail": "={{ $('Clean Order Data').first().json.Email }}",
+        "subject": "=We received your order {{ $('Clean Order Data').item.json['Order ID'] }}",
+        "html": "={{\n`<div style=\"font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; line-height: 1.7;\">\n\n  <p>Hi ${$('Clean Order Data').first().json['Customer Name']},</p>\n\n  <p>\n    Thank you for your order! We have received it and will start\n    preparing it by hand soon.\n  </p>\n\n  <div style=\"background-color: #f8f5f0; padding: 20px; border-radius: 8px; margin: 20px 0;\">\n\n    <h3 style=\"margin-top: 0; color: #795548;\">Your Order Details</h3>\n\n    <p><strong>Order:</strong> ${$('Clean Order Data').first().json['Order ID']}</p>\n\n    <p><strong>Item:</strong> ${$('Clean Order Data').first().json.Quantity} x ${$('Clean Order Data').first().json.Product}</p>\n\n    <p><strong>Total:</strong> RM ${Number($('Clean Order Data').first().json.Total).toFixed(2)}</p>\n\n    <p><strong>Shipping to:</strong><br>\n    ${$('Clean Order Data').first().json['Shipping Address']}</p>\n\n  </div>\n\n  <p>\n    If anything looks wrong, just reply to this email.\n  </p>\n\n  <p>\n    Warm regards,<br>\n    <strong>Hana and the Kiln &amp; Kapas team</strong>\n  </p>\n\n</div>`\n}}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1360,
+        -608
+      ],
+      "id": "71e79c7d-ec12-406a-b169-28267eea5db5",
+      "name": "Email Customer - Confirmation",
+      "webhookId": "040b3502-57eb-4527-9533-9f6e10d7537b",
+      "credentials": {
+        "smtp": {
+          "id": "q3gSRvJLqBVcU2Hq",
+          "name": "KK Mail (practice)"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 528,
+        "width": 2736,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -512,
+        -624
+      ],
+      "id": "9c7e93b6-3974-42a0-87c0-9149c832eafc",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "height": 208,
+        "width": 880,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        944,
+        -848
+      ],
+      "id": "c47d70ec-41bc-4f3c-8dc9-5a8719f937f7",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "",
+        "width": 1152,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "d9fed514-aecb-4185-a12e-9ca5e7857f2c",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 656516031,
+          "mode": "list",
+          "cachedResultName": "Errors",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=656516031"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "Order ID": "={{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() }}",
+            "Error Type": "Validation",
+            "Details": "=Order failed the validation check",
+            "Raw Data": "={{ JSON.stringify($('New Order Received').item.json.body) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Type",
+              "displayName": "Error Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Details",
+              "displayName": "Details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Data",
+              "displayName": "Raw Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        -80
+      ],
+      "id": "da0ff555-42cf-4a15-a6b7-44417a2762bf",
+      "name": "Log Error - Validation",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 656516031,
+          "mode": "list",
+          "cachedResultName": "Errors",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=656516031"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "Order ID": "={{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() }}",
+            "Error Type": "Step failure",
+            "Details": "=Email to Customer failed",
+            "Raw Data": "={{ JSON.stringify($('New Order Received').item.json.body) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Type",
+              "displayName": "Error Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Details",
+              "displayName": "Details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Data",
+              "displayName": "Raw Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1872,
+        -624
+      ],
+      "id": "d2ed6842-569f-4e3f-be4c-7c3dcd72d695",
+      "name": "Log Error - Customer Email",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 656516031,
+          "mode": "list",
+          "cachedResultName": "Errors",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=656516031"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "Order ID": "={{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() }}",
+            "Error Type": "Step failure",
+            "Details": "=Email to Hana failed",
+            "Raw Data": "={{ JSON.stringify($('New Order Received').item.json.body) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Type",
+              "displayName": "Error Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Details",
+              "displayName": "Details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Data",
+              "displayName": "Raw Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1856,
+        -352
+      ],
+      "id": "20b12523-91cb-4f3a-a64c-969298f8b6aa",
+      "name": "Log Error - Hana Email",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit?gid=1549923300#gid=1549923300",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 656516031,
+          "mode": "list",
+          "cachedResultName": "Errors",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID/edit#gid=656516031"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}",
+            "Order ID": "={{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() }}",
+            "Error Type": "Step failure",
+            "Details": "=Save to Orders failed",
+            "Raw Data": "={{ JSON.stringify($('New Order Received').item.json.body) }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Order ID",
+              "displayName": "Order ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Type",
+              "displayName": "Error Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Details",
+              "displayName": "Details",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Data",
+              "displayName": "Raw Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1360,
+        -240
+      ],
+      "id": "eeb57af0-4c9f-4d75-9c60-10cdffd75ead",
+      "name": "Save to Orders failed",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eI5aAtVjVglrFNmA",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "orders@kilnandkapas.example",
+        "toEmail": "hana@kilnandkapas.example",
+        "subject": "=[ALERT] Step failed: {{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() || 'NO-ID' }}",
+        "html": "=<h2>Order problem</h2>\n<p><b>Order ID:</b> {{ String($('New Order Received').item.json.body.order_id ?? '').trim().toUpperCase() || 'NO-ID' }}</p>\n<p><b>What went wrong:</b> Order failed the validation check. It was not saved to Orders.</p>\n<p><b>Time:</b> {{ $now.setZone('Asia/Kuala_Lumpur').toFormat('yyyy-MM-dd HH:mm:ss') }}</p>\n<p><b>Original order:</b></p>\n<pre>{{ JSON.stringify($('New Order Received').item.json.body, null, 2) }}</pre>\n<p>This order is also in the Errors tab of KK-Orders-2026.</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1632,
+        -240
+      ],
+      "id": "e5075d2e-0582-4e1c-969d-19ddacbf021f",
+      "name": "Alert Hana - Save Failed",
+      "webhookId": "50ddf444-9d52-46c9-bcdf-9a57684c443e",
+      "credentials": {
+        "smtp": {
+          "id": "q3gSRvJLqBVcU2Hq",
+          "name": "KK Mail (practice)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"status\":\"rejected\",\"reason\":\"Order failed the Save Failed\"}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2080,
+        -240
+      ],
+      "id": "69d9d2b9-894c-4462-9709-d4271e4c3462",
+      "name": "Reply 500 - Error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "New Order Received": {
+      "main": [
+        [
+          {
+            "node": "Clean Order Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Order Data": {
+      "main": [
+        [
+          {
+            "node": "Is Order Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Order Valid?": {
+      "main": [
+        [
+          {
+            "node": "Find Order ID in Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error - Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Order ID in Sheet": {
+      "main": [
+        [
+          {
+            "node": "Already Saved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Saved?": {
+      "main": [
+        [
+          {
+            "node": "Log Error - Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save to Orders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Orders": {
+      "main": [
+        [
+          {
+            "node": "Email Hana - New Order",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Customer - Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save to Orders failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Hana - New Order": {
+      "main": [
+        [
+          {
+            "node": "Reply 200 - Received",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error - Hana Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Hana - Bad Order": {
+      "main": [
+        [
+          {
+            "node": "Reply 422 - Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error - Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Alert Hana - Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Hana - Duplicate": {
+      "main": [
+        [
+          {
+            "node": "Reply 409 - Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Customer - Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Reply 200 - Received",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Error - Customer Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error - Validation": {
+      "main": [
+        [
+          {
+            "node": "Alert Hana - Bad Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error - Customer Email": {
+      "main": [
+        [
+          {
+            "node": "Reply 200 - Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error - Hana Email": {
+      "main": [
+        [
+          {
+            "node": "Reply 200 - Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Orders failed": {
+      "main": [
+        [
+          {
+            "node": "Alert Hana - Save Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Hana - Save Failed": {
+      "main": [
+        [
+          {
+            "node": "Reply 500 - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Kuala_Lumpur",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "0301d573-1017-4884-957f-97e076ff592d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "de614678027152b528f7795728f35e290aa148d6784de9e98abb5e1be42efcdd"
+  },
+  "nodeGroups": [],
+  "id": "yAiHUpmJ6V9jJlkX",
+  "tags": []
+}
