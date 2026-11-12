@@ -4,7 +4,7 @@ Order automation for a small online shop, built in n8n. Every new order is clean
 
 The shop in this project, Kiln & Kapas, is a demo store that sells handmade ceramics and cotton goods. The customers and orders in the test data are made up.
 
-Status: in progress. The main flow works from start to finish. Failure handling and a few edge cases are next (see [Progress](#progress)).
+Status: in progress. The main flow works from start to finish. Failure handling has started: a failed email or a failed save to the Orders tab no longer loses the order. The rest of the failure cases and a few edge cases are next (see [Progress](#progress)).
 
 ![Workflow](images/workflow.png)
 
@@ -30,8 +30,13 @@ flowchart LR
     D --> F{Already Saved?}
     F -- yes --> E2[Log Error - Duplicate] --> M2[Alert Hana - Duplicate] --> R409[Reply 409]
     F -- no --> S[Save to Orders]
+    S -- error --> E3[Log Error - Save Orders] --> M3[Alert Hana - Save Failed] --> R500[Reply 500]
     S --> H[Email Hana - New Order]
-    S --> CU[Email Customer - Confirmation] --> R200[Reply 200]
+    S --> CU[Email Customer - Confirmation]
+    H --> R200[Reply 200]
+    CU --> R200
+    H -- error --> E4[Log Error - Hana Email] --> R200
+    CU -- error --> E5[Log Error - Customer Email] --> R200
 ```
 
 ## Cleaning rules
@@ -51,6 +56,13 @@ An order is rejected when the Order ID, name, product or address is empty, the e
 
 Broken input, such as a name sent as an object or a quantity of `"two"`, is rejected instead of crashing the workflow.
 
+## When a step fails
+
+Some nodes use n8n's "Continue (using error output)" setting. If one of them fails, the order goes down a separate error path instead of stopping the workflow.
+
+- An email fails (for example, the mail server is down): the order is already saved, so the workflow writes a `Step failure` row to Errors saying which email failed, and still replies 200.
+- The save to the Orders tab fails: the order is not in the sheet, so the workflow writes a `Step failure` row to Errors with the whole order, sends the owner an alert with the whole order in it, sends the customer nothing, and replies 500.
+
 ## Responses to the store
 
 | Result | Code | Body |
@@ -58,6 +70,7 @@ Broken input, such as a name sent as an object or a quantity of `"two"`, is reje
 | Saved | 200 | `{"status":"received","order_id":"KK-10241"}` |
 | Rejected | 422 | `{"status":"rejected","reason":"Order failed the validation check"}` |
 | Duplicate | 409 | `{"status":"duplicate","order_id":"KK-10241"}` |
+| Could not save | 500 | `{"status":"error"}` |
 
 ## Google Sheet
 
@@ -67,15 +80,15 @@ Orders: `Order ID`, `Date`, `Customer Name`, `Email`, `Product`, `Quantity`, `To
 
 Errors: `Timestamp`, `Order ID`, `Error Type`, `Details`, `Raw Data`
 
-`Error Type` is `Validation` or `Duplicate` for now. `Raw Data` holds the order exactly as it arrived, as JSON, so it can be fixed by hand.
+`Error Type` is `Validation`, `Duplicate` or `Step failure`. `Raw Data` holds the order exactly as it arrived, as JSON, so it can be fixed by hand.
 
 ## Setup
 
 1. Import `workflow/KK-New-Order-Processing.json` into n8n (paste it onto an empty canvas, or use Import from File).
 2. Create the two credentials and select them in the nodes:
-   - Google Sheets OAuth2, for the four Google Sheets nodes
-   - SMTP, for the four email nodes
-3. Make a Google Sheet with the two tabs above, and put its link in every Google Sheets node.
+   - Google Sheets OAuth2, for every Google Sheets node
+   - SMTP, for every email node
+3. Make a Google Sheet with the two tabs above. In the workflow JSON, the sheet is written as `YOUR_SHEET_ID`. Put your own sheet's link in every Google Sheets node.
 4. Change the sender and owner email addresses in the email nodes.
 5. Publish the workflow, and point the store's order form at the production URL:
    `POST https://<your-n8n>/webhook/kk-new-order`
@@ -112,9 +125,14 @@ Done:
 - [x] Owner and customer emails, and alert emails
 - [x] Status codes back to the store
 
+In progress:
+
+- [x] Keep the order safe when an email fails (mail server down)
+- [x] Keep the order safe when the save to the Orders tab fails
+- [ ] Keep the order safe when both the Orders and Errors saves fail (the alert email holds the whole order)
+
 Still to do:
 
-- [ ] Keep the order safe when a step fails (mail server down, sheet write fails)
 - [ ] A separate error workflow that catches crashes
 - [ ] Refuse requests without the store's secret header
 - [ ] Handle many orders at once without hitting Google Sheets limits
@@ -130,7 +148,7 @@ workflow/KK-New-Order-Processing.json
 images/workflow.png
 ```
 
-The exported workflow contains credential names but no passwords or tokens. It does contain the Google Sheet link, so keep that sheet private or replace the link before making the repo public.
+The exported workflow contains credential names but no passwords or tokens. The Google Sheet ID is replaced with `YOUR_SHEET_ID`.
 
 ## Author
 
